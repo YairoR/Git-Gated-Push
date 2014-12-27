@@ -79,7 +79,7 @@ namespace TestExecutor
         /// <returns>True if all steps passed, else False.</returns>
         private bool HandleSolutionItem(SolutionItem solutionItem)
         {
-            Message.WriteInformation("Starting work on solution {0}", Path.GetFileNameWithoutExtension(solutionItem.SolutionRelativePath));
+            Message.WriteInformation("Starting work on solution {0}", Path.GetFileNameWithoutExtension(solutionItem.SolutionPath));
 
             var stopWatch = Stopwatch.StartNew();
 
@@ -92,7 +92,7 @@ namespace TestExecutor
                 return false;
             }
 
-            var testsResults = _testsHandler.ExecuteTests(TestsResourcesHelper.BuildPath).Result;
+            var testsResults = _testsHandler.FindAndExecuteTests(TestsResourcesHelper.BuildPath).Result;
 
             Message.WriteInformation("Done working in {0} seconds.", stopWatch.Elapsed.Seconds);
 
@@ -122,28 +122,28 @@ namespace TestExecutor
                 return solutionsPaths.Select(solutionPath =>
                     new SolutionItem
                     {
-                        SolutionRelativePath = Path.Combine(repositoryPath, solutionPath),
+                        SolutionPath = Path.Combine(repositoryPath, solutionPath),
                         BuildSolution = true,
                         RunTests = true
                     });
             }
             else
             {
-                Message.WriteInformation("Looking for the following solutions: {0}", string.Join(", ", solutionItems.Select(s => s.SolutionRelativePath)));
+                Message.WriteInformation("Looking for the following solutions: {0}", string.Join(", ", solutionItems.Select(s => s.SolutionPath)));
 
-                return solutionItems.Where(item => File.Exists(item.SolutionRelativePath));
+                return solutionItems.Where(item => File.Exists(Path.Combine(repositoryPath, item.SolutionPath)));
             }
         }
 
         public GitGatedPushConfiguration GetTestsConfiguration(string rootPath)
         {
             // Search for 'TestsConfiguration.config' file
-            var configFiles = Directory.GetFiles(rootPath, "TestsConfiguration.config", SearchOption.TopDirectoryOnly);
+            var configFiles = Directory.GetFiles(rootPath, "GitGatedPushConfiguration.config", SearchOption.TopDirectoryOnly);
 
             // Check we found only 1 config file
             if (!configFiles.Any() && configFiles.Count() > 1)
             {
-                Message.WriteError("There must be exactly one TestsConfiguration.config file.");
+                Message.WriteError("There must be exactly one GitGatedPushConfiguration.config file.");
                 return null;
             }
 
@@ -168,13 +168,13 @@ namespace TestExecutor
             SpinAnimation.Start(75);
 
             // Build solution
-            var buildSucceeded = _solutionBuilder.BuildSolution(solutionItem.SolutionRelativePath);
+            var buildSucceeded = _solutionBuilder.BuildSolution(solutionItem.SolutionPath);
 
             SpinAnimation.Stop();
 
             if (!buildSucceeded)
             {
-                Message.WriteError("Build for solution {0} failed!", solutionItem.SolutionRelativePath);
+                Message.WriteError("Build for solution {0} failed!", solutionItem.SolutionPath);
             }
             else
             {

@@ -12,7 +12,7 @@ namespace TestExecutor
         /// <summary>
         /// Gets or sets the solution's path.
         /// </summary>
-        public string SolutionRelativePath { get; set; }
+        public string SolutionPath { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicates whether we should be the solution.
@@ -61,11 +61,11 @@ namespace TestExecutor
         /// <summary>
         /// Load configuration from XML to configuration object.
         /// </summary>
-        /// <param name="xmlText">The configuration in XML format.</param>
+        /// <param name="xmlFilePath">The configuration file path.</param>
         /// <returns>The git gated push configuration.</returns>
-        public static GitGatedPushConfiguration LoadFromXmlFile(string xmlText)
+        public static GitGatedPushConfiguration LoadFromXmlFile(string xmlFilePath)
         {
-            var streamReader = new System.IO.StreamReader(xmlText);
+            var streamReader = new System.IO.StreamReader(xmlFilePath);
             var serializer = new XmlSerializer(typeof(GitGatedPushConfiguration));
             return serializer.Deserialize(streamReader) as GitGatedPushConfiguration;
         }

@@ -7,8 +7,8 @@ namespace TestExecutor
 {
     public class Program
     {
-        private static const int OperationSucceeded = 1;
-        private static const int OperationFailed = 0;
+        private const int OperationSucceeded = 1;
+        private const int OperationFailed = 0;
 
         public static int Main(string[] args)
         {

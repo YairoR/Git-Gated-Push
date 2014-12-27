@@ -26,7 +26,7 @@ namespace TestExecutor
         /// </summary>
         /// <param name="buildPath">The test container's name.</param>
         /// <returns>The tests results.</returns>
-        public async Task<bool> ExecuteTests(string buildPath)
+        public async Task<bool> FindAndExecuteTests(string buildPath)
         {
             Message.WriteInformation("Searching for tests containers");
 
