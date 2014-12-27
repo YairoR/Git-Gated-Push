@@ -7,9 +7,20 @@ using System.Reflection;
 
 namespace TestExecutor
 {
- public class TestsContainerFinder
+    /// <summary>
+    /// Find all the tests containers that in the given path.
+    /// Tests container are dlls that have the 'TestClass' attribute.
+    /// If the dll information contains also an attribute 'RunTestsBeforePush' with value 'false',
+    /// the dll is being ignored.
+    /// </summary>
+    public class TestsContainerFinder
     {
-        public List<string> Execute(string buildPath)
+        /// <summary>
+        /// Get all tests containers in the given build path.
+        /// </summary>
+        /// <param name="buildPath">The build path.</param>
+        /// <returns>The list of tests containers (dlls paths).</returns>
+        public List<string> GetTestsContainers(string buildPath)
         {
             AppDomainSetup setup = new AppDomainSetup()
             {
@@ -17,8 +28,9 @@ namespace TestExecutor
                 AppDomainInitializerArguments = new[] { buildPath },
                 ShadowCopyFiles = "true"
             };
-            AppDomain testDomain = AppDomain.CreateDomain("test", AppDomain.CurrentDomain.Evidence, setup);
+            AppDomain testDomain = AppDomain.CreateDomain("TestsContainersFinder", AppDomain.CurrentDomain.Evidence, setup);
 
+            // Get the results of tests containers from the created app domain
             var data = testDomain.GetData("result") as List<string>;
 
             AppDomain.Unload(testDomain);
@@ -26,12 +38,17 @@ namespace TestExecutor
             return data;
         }
 
+        /// <summary>
+        /// Entry point for the tests containers finder app domain.
+        /// </summary>
+        /// <param name="args">The app domain's args.</param>
         private static void Analyze(string[] args)
         {
             AppDomain.CurrentDomain.DoCallBack(() =>
             {
                 var buildPath = args[0];
-                var result = InternalDllAnalyse(buildPath);
+                var result = InternalDllAnalyze(buildPath);
+
                 AppDomain.CurrentDomain.SetData("result", result);
             });
         }
@@ -42,13 +59,13 @@ namespace TestExecutor
         /// </summary>
         /// <param name="buildPath">The build path.</param>
         /// <returns>List of dll paths which are tests container.</returns>
-        private static List<string> InternalDllAnalyse(string buildPath)
+        private static List<string> InternalDllAnalyze(string buildPath)
         {
             var dllFiles = Directory.GetFiles(buildPath, "*.dll", SearchOption.TopDirectoryOnly);
 
             var result = (from container
                           in dllFiles
-                          let modules = (from t in AnalyzeDlls(container)
+                          let modules = (from t in CheckIfAssemblyIsTestsContainer(container)
                                          select t).ToList()
                           where modules.Any()
                           select container).ToList();
@@ -56,7 +73,7 @@ namespace TestExecutor
             return result;
         }
 
-        private static IEnumerable<Type> AnalyzeDlls(string assemblyPath)
+        private static IEnumerable<Type> CheckIfAssemblyIsTestsContainer(string assemblyPath)
         {
             Assembly assembly;
             try
@@ -84,7 +101,7 @@ namespace TestExecutor
             }
 
             return GetAssemblyClasses(assembly)
-                .Where(IsTestMethod).ToList();
+                .Where(IsContainsTestsClasses).ToList();
         }
 
         /// <summary>
@@ -109,7 +126,7 @@ namespace TestExecutor
         /// </summary>
         /// <param name="type">The type to check.</param>
         /// <returns>True if this type has the <see cref="TestClassAttribute"/>, else False.</returns>
-        private static bool IsTestMethod(Type type)
+        private static bool IsContainsTestsClasses(Type type)
         {
             var moduleHasClassAttribute = type.GetCustomAttributes(false)
                                    .Select(t => t.GetType().FullName)

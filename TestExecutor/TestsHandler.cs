@@ -116,7 +116,7 @@ namespace TestExecutor
 
             Message.WriteInformation("Starting looking for tests...");
 
-            var testContainers = _testContainerFinder.Execute(buildPath).ToList();
+            var testContainers = _testContainerFinder.GetTestsContainers(buildPath).ToList();
 
             Message.WriteSuccess("Done in : {0}", watch.Elapsed.TotalSeconds);
 
