@@ -17,6 +17,9 @@ namespace TestExecutor
                 var mainExecutor = new MainExecutor();
                 var result = mainExecutor.ExecuteAsync();
 
+                // Return screen font color to gray (default)
+                Console.ForegroundColor = ConsoleColor.Gray;
+
                 return result ? OperationSucceeded : OperationFailed;
             }
             catch (Exception ex)

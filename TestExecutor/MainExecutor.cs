@@ -17,55 +17,48 @@ namespace TestExecutor
 
         public bool ExecuteAsync()
         {
-            try
+            // Read configurations from file
+            _testsConfiguration = GetTestsConfiguration(Environment.CurrentDirectory);
+
+            // Check we got the configurations
+            if (_testsConfiguration == null)
             {
-                // Read configurations from file
-                _testsConfiguration = GetTestsConfiguration(Environment.CurrentDirectory);
-
-                // Check we got the configurations
-                if (_testsConfiguration == null)
-                {
-                    Message.WriteError("Can't find configuration file in {0}!", Environment.CurrentDirectory);
-                    return false;
-                }
-
-                // Set objects with values from configuration
-                _testsHandler = new TestsHandler(_testsConfiguration.MsTestPath);
-
-                // Create resources
-                TestsResourcesHelper.CreateResource();
-
-                // Get the current branch
-                if (!ValidateBranchName(Environment.CurrentDirectory))
-                {
-                    return false;
-                }
-
-                // Get all solutions items we should work on
-                var solutionItems = GetSolutionsItems(Environment.CurrentDirectory,
-                                                 _testsConfiguration.ProcessAllSolutions,
-                                                 _testsConfiguration.SolutionsItems).ToList();
-
-                // Check we have items to work on
-                if (!solutionItems.Any())
-                {
-                    Message.WriteError("Couldn't find any solution, proceeding in 'git push'.");
-                    return true;
-                }
-
-                // Start working on all the required solutions by building them and execute their tests if necessary 
-                var result = true;
-                foreach (var solutionItem in solutionItems)
-                {
-                    result = result && HandleSolutionItem(solutionItem);
-                }
-
-                return result;
+                Message.WriteError("Can't find configuration file in {0}!", Environment.CurrentDirectory);
+                return false;
             }
-            finally
+
+            // Set objects with values from configuration
+            _testsHandler = new TestsHandler(_testsConfiguration.MsTestPath);
+
+            // Create resources
+            TestsResourcesHelper.CreateResource();
+
+            // Get the current branch
+            if (!ValidateBranchName(Environment.CurrentDirectory))
             {
-                TestsResourcesHelper.ClearResources();
+                return false;
             }
+
+            // Get all solutions items we should work on
+            var solutionItems = GetSolutionsItems(Environment.CurrentDirectory,
+                                             _testsConfiguration.ProcessAllSolutions,
+                                             _testsConfiguration.SolutionsItems).ToList();
+
+            // Check we have items to work on
+            if (!solutionItems.Any())
+            {
+                Message.WriteError("Couldn't find any solution, proceeding in 'git push'.");
+                return true;
+            }
+
+            // Start working on all the required solutions by building them and execute their tests if necessary 
+            var result = true;
+            foreach (var solutionItem in solutionItems)
+            {
+                result = result && HandleSolutionItem(solutionItem);
+            }
+
+            return result;
         }
 
         #endregion
@@ -116,9 +109,9 @@ namespace TestExecutor
             if (findAllSolutions)
             {
                 var solutionsPaths = Directory.GetFiles(repositoryPath, "*.sln", SearchOption.AllDirectories);
-                
+
                 Message.WriteInformation("Looking for all solutions in {0}. Found: {1}", repositoryPath, string.Join(",", solutionsPaths));
-                
+
                 return solutionsPaths.Select(solutionPath =>
                     new SolutionItem
                     {
@@ -129,7 +122,9 @@ namespace TestExecutor
             }
             else
             {
-                Message.WriteInformation("Looking for the following solutions: {0}", string.Join(", ", solutionItems.Select(s => s.SolutionPath)));
+                var solutionsPaths = solutionItems.Select(s => Path.Combine(repositoryPath, s.SolutionPath));
+
+                Message.WriteInformation("Looking for the following solutions: {0}", string.Join(", ", solutionsPaths));
 
                 return solutionItems.Where(item => File.Exists(Path.Combine(repositoryPath, item.SolutionPath)));
             }
@@ -141,7 +136,7 @@ namespace TestExecutor
             var configFiles = Directory.GetFiles(rootPath, "GitGatedPushConfiguration.config", SearchOption.TopDirectoryOnly);
 
             // Check we found only 1 config file
-            if (!configFiles.Any() && configFiles.Count() > 1)
+            if (!configFiles.Any() || configFiles.Count() > 1)
             {
                 Message.WriteError("There must be exactly one GitGatedPushConfiguration.config file.");
                 return null;

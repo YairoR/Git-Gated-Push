@@ -75,8 +75,7 @@ namespace TestExecutor
                         }
                     });
 
-                directory.EnumerateDirectories()
-                    .ToList().ForEach(d => d.Delete(true));
+                directory.EnumerateDirectories().ToList().ForEach(d => d.Delete(true));
 
                 // Delete directory
                 Directory.Delete(BuildPath);

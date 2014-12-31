@@ -118,7 +118,7 @@ namespace TestExecutor
 
             var testContainers = _testContainerFinder.GetTestsContainers(buildPath).ToList();
 
-            Message.WriteSuccess("Done in : {0}", watch.Elapsed.TotalSeconds);
+            Message.WriteInformation("Done finding your unit tests in : {0}", watch.Elapsed.TotalSeconds);
 
             return testContainers;
         }
