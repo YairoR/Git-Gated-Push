@@ -7,7 +7,7 @@ namespace TestExecutor
     public static class TestsResourcesHelper
     {
         public const string LogPath = @"C:\LogResultsTempFolder\";
-        public const string BuildPath = @"c:\BuildOutputTempFolder\";
+        public const string BuildPath = @"C:\BuildOutputTempFolder\";
         public const string GitPushExtentionLogs = @"C:\GitPushExtentionLogs\";
         public const string BuildLogPath = GitPushExtentionLogs + @"SolutionBuilderLogs.txt";
 

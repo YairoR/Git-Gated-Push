@@ -12,6 +12,13 @@ namespace TestExecutor
     /// </summary>
     public class SolutionBuilder
     {
+        private readonly ILogger _logger;
+
+        public SolutionBuilder(ILogger logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Start to build given solution path.
         /// </summary>
@@ -51,6 +58,8 @@ namespace TestExecutor
             }
             catch (Exception ex)
             {
+                _logger.Log("Failed to build solution {0}, exception: {1}", solutionPath, ex);
+
                 return false;
             }
         }

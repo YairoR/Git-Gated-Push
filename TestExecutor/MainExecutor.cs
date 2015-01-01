@@ -8,57 +8,87 @@ namespace TestExecutor
 {
     public class MainExecutor
     {
-        private GitGatedPushConfiguration _testsConfiguration = new GitGatedPushConfiguration();
-        private readonly GitOperations _gitOperations = new GitOperations();
-        private readonly SolutionBuilder _solutionBuilder = new SolutionBuilder();
+        private GitGatedPushConfiguration _testsConfiguration;
+        private readonly GitOperations _gitOperations;
+        private SolutionBuilder _solutionBuilder;
+        private ILogger _logger;
         private TestsHandler _testsHandler;
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="MainExecutor"/> class
+        /// </summary>
+        public MainExecutor()
+        {
+            _testsConfiguration = new GitGatedPushConfiguration();
+            _gitOperations = new GitOperations();
+        }
 
         #region Main Method
 
         public bool ExecuteAsync()
         {
-            // Read configurations from file
-            _testsConfiguration = GetTestsConfiguration(Environment.CurrentDirectory);
-
-            // Check we got the configurations
-            if (_testsConfiguration == null)
+            try
             {
-                Message.WriteError("Can't find configuration file in {0}!", Environment.CurrentDirectory);
-                return false;
+                // Read configurations from file
+                _testsConfiguration = GetTestsConfiguration(Environment.CurrentDirectory);
+
+                // Check we got the configurations
+                if (_testsConfiguration == null)
+                {
+                    Message.WriteError("Can't find configuration file in {0}!", Environment.CurrentDirectory);
+                    return false;
+                }
+
+                // Set objects with values from configuration
+                _testsHandler = new TestsHandler(_testsConfiguration.MsTestPath, _logger);
+
+                // Create resources
+                TestsResourcesHelper.CreateResource();
+
+                // Get the current branch
+                if (!ValidateBranchName(Environment.CurrentDirectory))
+                {
+                    return false;
+                }
+
+                // Initialize logger
+                _logger = new Logger(TestsResourcesHelper.LogPath);
+                _solutionBuilder = new SolutionBuilder(_logger);
+
+                // Get all solutions items we should work on
+                var solutionItems = GetSolutionsItems(Environment.CurrentDirectory,
+                                                 _testsConfiguration.ProcessAllSolutions,
+                                                 _testsConfiguration.SolutionsItems).ToList();
+
+                _logger.Log("Found {0} solution items: {1}", solutionItems.Count(),
+                    string.Join(", ",
+                    from item in solutionItems
+                    select new { item.SolutionPath, item.BuildSolution, item.RunTests }));
+
+                // Check we have items to work on
+                if (!solutionItems.Any())
+                {
+                    Message.WriteError("Couldn't find any solution, proceeding in 'git push'.");
+                    return true;
+                }
+
+                // Start working on all the required solutions by building them and execute their tests if necessary 
+                var result = true;
+                foreach (var solutionItem in solutionItems)
+                {
+                    result = result && HandleSolutionItem(solutionItem);
+                }
+
+                return result;
             }
-
-            // Set objects with values from configuration
-            _testsHandler = new TestsHandler(_testsConfiguration.MsTestPath);
-
-            // Create resources
-            TestsResourcesHelper.CreateResource();
-
-            // Get the current branch
-            if (!ValidateBranchName(Environment.CurrentDirectory))
+            finally
             {
-                return false;
+                if (_logger != null)
+                {
+                    // Flush logger output to log file
+                    _logger.Flush();
+                }
             }
-
-            // Get all solutions items we should work on
-            var solutionItems = GetSolutionsItems(Environment.CurrentDirectory,
-                                             _testsConfiguration.ProcessAllSolutions,
-                                             _testsConfiguration.SolutionsItems).ToList();
-
-            // Check we have items to work on
-            if (!solutionItems.Any())
-            {
-                Message.WriteError("Couldn't find any solution, proceeding in 'git push'.");
-                return true;
-            }
-
-            // Start working on all the required solutions by building them and execute their tests if necessary 
-            var result = true;
-            foreach (var solutionItem in solutionItems)
-            {
-                result = result && HandleSolutionItem(solutionItem);
-            }
-
-            return result;
         }
 
         #endregion
@@ -74,6 +104,8 @@ namespace TestExecutor
         {
             Message.WriteInformation("Starting work on solution {0}", Path.GetFileNameWithoutExtension(solutionItem.SolutionPath));
 
+            _logger.Log("Starting to process solution {0}", solutionItem.SolutionPath);
+
             var stopWatch = Stopwatch.StartNew();
 
             // Build solution
@@ -82,8 +114,11 @@ namespace TestExecutor
             // If the build failed, move to the next solution (don't continue to the tests)
             if (!solutionBuilt)
             {
+                _logger.Log("Failed to build solution");
                 return false;
             }
+
+            _logger.Log("Solution was built successfully");
 
             var testsResults = _testsHandler.FindAndExecuteTests(TestsResourcesHelper.BuildPath).Result;
 
@@ -108,9 +143,13 @@ namespace TestExecutor
             // Case we should find all solutions in repository path
             if (findAllSolutions)
             {
+                _logger.Log("Configuration was set to find all solution in repository path {0}", repositoryPath);
+
                 var solutionsPaths = Directory.GetFiles(repositoryPath, "*.sln", SearchOption.AllDirectories);
 
                 Message.WriteInformation("Looking for all solutions in {0}. Found: {1}", repositoryPath, string.Join(",", solutionsPaths));
+
+                _logger.Log("Found {0} solutions", solutionsPaths.Count());
 
                 return solutionsPaths.Select(solutionPath =>
                     new SolutionItem
@@ -122,6 +161,8 @@ namespace TestExecutor
             }
             else
             {
+                _logger.Log("Configuration was set to search for specific solution items");
+
                 var solutionsPaths = solutionItems.Select(s => Path.Combine(repositoryPath, s.SolutionPath));
 
                 Message.WriteInformation("Looking for the following solutions: {0}", string.Join(", ", solutionsPaths));

@@ -15,6 +15,13 @@ namespace TestExecutor
     /// </summary>
     public class TestsContainerFinder
     {
+        private readonly ILogger _logger;
+
+        public TestsContainerFinder(ILogger logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Get all tests containers in the given build path.
         /// </summary>
@@ -28,6 +35,7 @@ namespace TestExecutor
                 AppDomainInitializerArguments = new[] { buildPath },
                 ShadowCopyFiles = "true"
             };
+
             AppDomain testDomain = AppDomain.CreateDomain("TestsContainersFinder", AppDomain.CurrentDomain.Evidence, setup);
 
             // Get the results of tests containers from the created app domain
@@ -42,7 +50,7 @@ namespace TestExecutor
         /// Entry point for the tests containers finder app domain.
         /// </summary>
         /// <param name="args">The app domain's args.</param>
-        private static void Analyze(string[] args)
+        private void Analyze(string[] args)
         {
             AppDomain.CurrentDomain.DoCallBack(() =>
             {
@@ -59,9 +67,11 @@ namespace TestExecutor
         /// </summary>
         /// <param name="buildPath">The build path.</param>
         /// <returns>List of dll paths which are tests container.</returns>
-        private static List<string> InternalDllAnalyze(string buildPath)
+        private List<string> InternalDllAnalyze(string buildPath)
         {
             var dllFiles = Directory.GetFiles(buildPath, "*.dll", SearchOption.TopDirectoryOnly);
+
+            _logger.Log("Found {0} to go over", dllFiles.Count());
 
             var result = (from container
                           in dllFiles
@@ -73,7 +83,7 @@ namespace TestExecutor
             return result;
         }
 
-        private static IEnumerable<Type> CheckIfAssemblyIsTestsContainer(string assemblyPath)
+        private IEnumerable<Type> CheckIfAssemblyIsTestsContainer(string assemblyPath)
         {
             Assembly assembly;
             try
@@ -95,8 +105,9 @@ namespace TestExecutor
                     }
                 }
             }
-            catch
+            catch (Exception e)
             {
+                _logger.Log("Failed to analyze assembly {0}, exception: {1}", assemblyPath, e);
                 return new List<Type>();
             }
 
@@ -109,14 +120,15 @@ namespace TestExecutor
         /// </summary>
         /// <param name="assembly">The assembly.</param>
         /// <returns>The list of types.</returns>
-        private static IEnumerable<Type> GetAssemblyClasses(Assembly assembly)
+        private IEnumerable<Type> GetAssemblyClasses(Assembly assembly)
         {
             try
             {
                 return assembly.GetTypes().AsEnumerable();
             }
-            catch
+            catch (Exception e)
             {
+                _logger.Log("Failed to get assembly classes: {0}, exception: {1}", assembly, e);
                 return Enumerable.Empty<Type>();
             }
         }
@@ -126,7 +138,7 @@ namespace TestExecutor
         /// </summary>
         /// <param name="type">The type to check.</param>
         /// <returns>True if this type has the <see cref="TestClassAttribute"/>, else False.</returns>
-        private static bool IsContainsTestsClasses(Type type)
+        private bool IsContainsTestsClasses(Type type)
         {
             var moduleHasClassAttribute = type.GetCustomAttributes(false)
                                    .Select(t => t.GetType().FullName)
@@ -134,9 +146,12 @@ namespace TestExecutor
 
             if (moduleHasClassAttribute)
             {
+                _logger.Log("Type {0} does contain test class attribute", type);
                 Message.WriteInformation("Found tests class: {0}", type.FullName);
                 return true;
             }
+
+            _logger.Log("Type {0} doesn't contain test class attribute", type);
 
             return false;
         }

@@ -13,11 +13,15 @@ namespace TestExecutor
         private TestRunner _testRunner;
         private readonly XmlSerializer _xmlSer = new XmlSerializer(typeof(TestRunType));
         private readonly List<string> _failingTests = new List<string>();
-        private readonly TestsContainerFinder _testContainerFinder = new TestsContainerFinder();
+        private readonly TestsContainerFinder _testContainerFinder;
+        private readonly ILogger _logger;
 
-        public TestsHandler(string MsTestPath)
+        public TestsHandler(string MsTestPath, ILogger logger)
         {
+            _logger = logger;
+
             _testRunner = new TestRunner(MsTestPath);
+            _testContainerFinder = new TestsContainerFinder(logger);
         }
 
 
@@ -35,12 +39,16 @@ namespace TestExecutor
             // Run all tests async
             var testResultsInfo = await Task.WhenAll(testsContainers.Select(_testRunner.RunTestContainerAsync));
 
+            _logger.Log("Starting to run all tests containers: {0}", string.Join(", ", testsContainers));
+
             // In each test result, find the trx file and convert it to TestRunType object
             var testsResults = testResultsInfo.Select(GetTestResult).Where(t => t != null).ToList();
 
             // Calculate the number of passed and failed tests
             var passedTests = CountTestsResults(testsResults, TestOutcome.Passed).ToList();
             var failureTests = CountTestsResults(testsResults, TestOutcome.Failed).ToList();
+
+            _logger.Log("Totally passed: {0}, totally failed: {1}", passedTests, failureTests);
 
             if (failureTests.Count() != 0)
             {
