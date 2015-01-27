@@ -14,14 +14,11 @@ namespace TestExecutor
         private readonly XmlSerializer _xmlSer = new XmlSerializer(typeof(TestRunType));
         private readonly List<string> _failingTests = new List<string>();
         private readonly TestsContainerFinder _testContainerFinder;
-        private readonly ILogger _logger;
 
-        public TestsHandler(string MsTestPath, ILogger logger)
+        public TestsHandler(string MsTestPath)
         {
-            _logger = logger;
-
             _testRunner = new TestRunner(MsTestPath);
-            _testContainerFinder = new TestsContainerFinder(logger);
+            _testContainerFinder = new TestsContainerFinder();
         }
 
 
@@ -39,7 +36,7 @@ namespace TestExecutor
             // Run all tests async
             var testResultsInfo = await Task.WhenAll(testsContainers.Select(_testRunner.RunTestContainerAsync));
 
-            _logger.Log("Starting to run all tests containers: {0}", string.Join(", ", testsContainers));
+            Trace.TraceInformation("Starting to run all tests containers: {0}", string.Join(", ", testsContainers));
 
             // In each test result, find the trx file and convert it to TestRunType object
             var testsResults = testResultsInfo.Select(GetTestResult).Where(t => t != null).ToList();
@@ -48,7 +45,7 @@ namespace TestExecutor
             var passedTests = CountTestsResults(testsResults, TestOutcome.Passed).ToList();
             var failureTests = CountTestsResults(testsResults, TestOutcome.Failed).ToList();
 
-            _logger.Log("Totally passed: {0}, totally failed: {1}", passedTests, failureTests);
+            Trace.TraceInformation("Totally passed: {0}, totally failed: {1}", passedTests.Count, failureTests.Count);
 
             if (failureTests.Count() != 0)
             {
@@ -90,9 +87,12 @@ namespace TestExecutor
                     return (TestRunType)_xmlSer.Deserialize(trxFileReader);
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                Message.WriteError(@"There is a test container that failed to run.. This might cause because of tests which are not unit tests.");
+                Trace.TraceError("Failed to execute and recieve tests result, exception: {0}", e);
+
+                Message.WriteError(@"There is a test container that failed to run. This might cause because of tests which are not unit tests.");
+
                 return null;
             }
         }

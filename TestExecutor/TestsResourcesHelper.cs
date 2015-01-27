@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -27,6 +28,34 @@ namespace TestExecutor
             }
         }
 
+        public static void ClearResources(string resourcePath)
+        {
+            Trace.TraceInformation("Starting to clear resource {0}", resourcePath);
+
+            if (Directory.Exists(resourcePath))
+            {
+                var directory = new DirectoryInfo(resourcePath);
+
+                directory.EnumerateFiles()
+                    .ToList().ForEach(f =>
+                    {
+                        try
+                        {
+                            f.Delete();
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            // Do Nothing
+                        }
+                    });
+
+                directory.EnumerateDirectories().ToList().ForEach(d => d.Delete(true));
+
+                // Delete directory
+                Directory.Delete(resourcePath);
+            }
+        }
+
         /// <summary>
         /// Clear all used resources for running the tests.
         /// </summary>
@@ -52,7 +81,7 @@ namespace TestExecutor
 
                 directory.EnumerateDirectories()
                     .ToList().ForEach(d => d.Delete(true));
-               
+
                 // Delete the log's path
                 Directory.Delete(LogPath);
             }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -12,22 +13,16 @@ namespace TestExecutor
 
         public static int Main(string[] args)
         {
-            try
-            {
-                var mainExecutor = new MainExecutor();
-                var result = mainExecutor.ExecuteAsync();
+            var t = new TestsContainerFinder();
+            t.GetTestsContainers(@"C:\temp-deleteit");
 
-                // Return screen font color to gray (default)
-                Console.ForegroundColor = ConsoleColor.Gray;
+            var mainExecutor = new MainExecutor();
+            var result = mainExecutor.Execute();
 
-                return result ? OperationSucceeded : OperationFailed;
-            }
-            catch (Exception ex)
-            {
-                Message.WriteError("Sorry, but we're having a problem...Please contact Yairip in order to investigate what the problem is.");
-                File.WriteAllText("ExceptionDetails.txt", ex + "---------" + ex.InnerException, Encoding.UTF8);
-                return 0;
-            }
+            // Return screen font color to gray (default)
+            Console.ForegroundColor = ConsoleColor.Gray;
+
+            return result ? OperationSucceeded : OperationFailed;
         }
     }
 }

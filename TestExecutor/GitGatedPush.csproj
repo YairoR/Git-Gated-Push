@@ -60,6 +60,7 @@
     <Compile Include="TestsContainerFinder.cs" />
     <Compile Include="TestsHandler.cs" />
     <Compile Include="TestsResourcesHelper.cs" />
+    <Compile Include="TracerWrapper.cs" />
     <Compile Include="vstst.cs" />
   </ItemGroup>
   <ItemGroup>

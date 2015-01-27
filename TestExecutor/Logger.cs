@@ -18,7 +18,9 @@ namespace TestExecutor
 
     public class Logger : ILogger
     {
-        private const string logFileNameFormat = "dd.MM.yyyy HH.MM.ss";
+        private const string logFileNameFormat = "GitGatedPushLogs.txt";
+        private ILogger _logger = new Logger("sdf");
+        private object _lockObject = new object();
 
         /// <summary>
         /// Contains the log file path.
@@ -32,8 +34,7 @@ namespace TestExecutor
             _logBuilder = new StringBuilder();
 
             // Create the full file path for the new log
-            var logFileName = DateTime.Now.ToString(logFileNameFormat) + ".txt";
-            var logFileFullPath = Path.Combine(logFileFolderPath, logFileName);
+            var logFileFullPath = Path.Combine(logFileFolderPath, logFileNameFormat);
 
             // Create the log file it self
             File.Create(logFileFullPath);
@@ -57,5 +58,22 @@ namespace TestExecutor
             File.AppendAllText(_logFile, _logBuilder.ToString(), Encoding.UTF8);
             _logBuilder.Clear();
         }
+
+        //public Logger GetInstance()
+        //{
+        //    // Double check for logger initialize
+        //    if (_logger == null)
+        //    {
+        //        lock (_lockObject)
+        //        {
+        //            if (_logger == null)
+        //            {
+        //                //_logger = new Logger();
+        //            }
+        //        }
+        //    }
+
+        //    return _logger;
+        //}
     }
 }
