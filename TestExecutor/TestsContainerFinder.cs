@@ -14,56 +14,23 @@ namespace TestExecutor
     /// If the dll information contains also an attribute 'RunTestsBeforePush' with value 'false',
     /// the dll is being ignored.
     /// </summary>
-    public class TestsContainerFinder
+    public class TestsContainerFinder : MarshalByRefObject
     {
-        private static TracerWrapper _tracerWrapper;
+        /// <summary>
+        /// Contains the remote object for 'Tracer'.
+        /// </summary>
+        private TracerWrapper _tracerWrapper;
 
         /// <summary>
         /// Get all tests containers in the given build path.
         /// </summary>
         /// <param name="buildPath">The build path.</param>
         /// <returns>The list of tests containers (dlls paths).</returns>
-        public List<string> GetTestsContainers(string buildPath)
+        public List<string> GetTestsContainers(string buildPath, TracerWrapper tracerWrapper)
         {
-            // Create a new app domain for searching over the build dlls (and then delete them)
-            AppDomainSetup setup = new AppDomainSetup()
-            {
-                AppDomainInitializer = Analyze,
-                AppDomainInitializerArguments = new[] { buildPath },
-                ShadowCopyFiles = "true"
-            };
+            _tracerWrapper = tracerWrapper;
 
-            AppDomain testDomain = AppDomain.CreateDomain("TestsContainersFinder", AppDomain.CurrentDomain.Evidence, setup);
-
-            // Get the results of tests containers from the created app domain
-            var data = testDomain.GetData("result") as List<string>;
-
-            AppDomain.Unload(testDomain);
-
-            return data;
-        }
-
-        /// <summary>
-        /// Entry point for the tests containers finder app domain.
-        /// </summary>
-        /// <param name="args">The app domain's args.</param>
-        private static void Analyze(string[] args)
-        {
-            //Console.WriteLine(AppDomain.CurrentDomain.FriendlyName);
-            //// Get the tracer wrapper for able to trace things in the different app domain
-            //_tracerWrapper = (TracerWrapper)AppDomain.CurrentDomain.CreateInstanceAndUnwrap(
-            //    typeof(TracerWrapper).Assembly.FullName,
-            //    typeof(TracerWrapper).FullName);
-
-            //_tracerWrapper.TraceInformation("yeyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
-            //Trace.TraceInformation("yair!!!");
-            AppDomain.CurrentDomain.DoCallBack(() =>
-            {
-                var buildPath = args[0];
-                var result = InternalDllAnalyze(buildPath);
-
-                AppDomain.CurrentDomain.SetData("result", result);
-            });
+            return InternalDllAnalyze(buildPath);
         }
 
         /// <summary>
@@ -72,11 +39,11 @@ namespace TestExecutor
         /// </summary>
         /// <param name="buildPath">The build path.</param>
         /// <returns>List of dll paths which are tests container.</returns>
-        private static List<string> InternalDllAnalyze(string buildPath)
+        private List<string> InternalDllAnalyze(string buildPath)
         {
             var dllFiles = Directory.GetFiles(buildPath, "*.dll", SearchOption.TopDirectoryOnly);
 
-            //_tracerWrapper.TraceInformation("Found {0} to go over", dllFiles.Count());
+            _tracerWrapper.TraceInformation("Found {0} dlls to go over", dllFiles.Count());
 
             var result = (from container
                           in dllFiles
@@ -88,11 +55,20 @@ namespace TestExecutor
             return result;
         }
 
-        private static IEnumerable<Type> CheckIfAssemblyIsTestsContainer(string assemblyPath)
+        /// <summary>
+        /// Check if the given assembly is a test container by the following:
+        ///     1. Check it doesn't have the attribute 'RunTestsbeforePush' with the value 'false'.
+        ///     2. Check if this assembly contains the 'TestMethod' attribute.
+        /// </summary>
+        /// <param name="assemblyPath">The assembly's path.</param>
+        /// <returns>True if the assembly is a test container, else false.</returns>
+        private IEnumerable<Type> CheckIfAssemblyIsTestsContainer(string assemblyPath)
         {
             Assembly assembly;
             try
             {
+                _tracerWrapper.TraceInformation("Starting to analyze assembly: {0}", assemblyPath);
+
                 assembly = AppDomain.CurrentDomain.Load(AssemblyName.GetAssemblyName(assemblyPath));
 
                 // Check if we need to exclude this project
@@ -112,12 +88,11 @@ namespace TestExecutor
             }
             catch (Exception e)
             {
-                _tracerWrapper.TraceError("Failed to analyze assembly {0}, exception: {1}", assemblyPath, e);
+                _tracerWrapper.TraceError("Failed to analyze assembly {0}, exception: {1}", assemblyPath, e.Message);
                 return new List<Type>();
             }
 
-            return GetAssemblyClasses(assembly)
-                .Where(IsContainsTestsClasses).ToList();
+            return GetAssemblyClasses(assembly).Where(IsContainsTestsClasses).ToList();
         }
 
         /// <summary>
@@ -125,7 +100,7 @@ namespace TestExecutor
         /// </summary>
         /// <param name="assembly">The assembly.</param>
         /// <returns>The list of types.</returns>
-        private static IEnumerable<Type> GetAssemblyClasses(Assembly assembly)
+        private IEnumerable<Type> GetAssemblyClasses(Assembly assembly)
         {
             try
             {
@@ -133,7 +108,7 @@ namespace TestExecutor
             }
             catch (Exception e)
             {
-                //_tracerWrapper.TraceError("Failed to get assembly classes: {0}, exception: {1}", assembly, e);
+                _tracerWrapper.TraceInformation("Failed to get assembly classes, exception: {0}", e.Message);
                 return Enumerable.Empty<Type>();
             }
         }
@@ -143,7 +118,7 @@ namespace TestExecutor
         /// </summary>
         /// <param name="type">The type to check.</param>
         /// <returns>True if this type has the <see cref="TestClassAttribute"/>, else False.</returns>
-        private static bool IsContainsTestsClasses(Type type)
+        private bool IsContainsTestsClasses(Type type)
         {
             var moduleHasClassAttribute = type.GetCustomAttributes(false)
                                    .Select(t => t.GetType().FullName)
@@ -151,12 +126,10 @@ namespace TestExecutor
 
             if (moduleHasClassAttribute)
             {
-                //_tracerWrapper.TraceInformation("Type {0} does contain test class attribute", type);
+                _tracerWrapper.TraceInformation("Type {0} does contain test class attribute", type.FullName);
                 Message.WriteInformation("Found tests class: {0}", type.FullName);
                 return true;
             }
-
-            //_tracerWrapper.TraceInformation("Type {0} doesn't contain test class attribute", type);
 
             return false;
         }

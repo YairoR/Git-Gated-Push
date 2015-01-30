@@ -124,9 +124,26 @@ namespace TestExecutor
 
             Message.WriteInformation("Starting looking for tests...");
 
-            var testContainers = _testContainerFinder.GetTestsContainers(buildPath).ToList();
+            // Create different application-domain in order to execute the search
+            AppDomainSetup domainSetup = new AppDomainSetup()
+            {
+                ApplicationBase = AppDomain.CurrentDomain.SetupInformation.ApplicationBase,
+                ConfigurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile,
+                ApplicationName = AppDomain.CurrentDomain.SetupInformation.ApplicationName,
+                LoaderOptimization = LoaderOptimization.MultiDomainHost
+            };
+
+            // Create the child AppDomain used for the service tool at runtime.
+            var testsContainerFinderDomain = AppDomain.CreateDomain("SearchTestsContainerAppDomain", null, domainSetup);
+
+            TestsContainerFinder testsContainerFinder = (TestsContainerFinder)testsContainerFinderDomain.CreateInstanceAndUnwrap(
+                typeof(TestsContainerFinder).Assembly.FullName, typeof(TestsContainerFinder).FullName);
+
+            var testContainers = testsContainerFinder.GetTestsContainers(buildPath, new TracerWrapper()).ToList();
 
             Message.WriteInformation("Done finding your unit tests in : {0}", watch.Elapsed.TotalSeconds);
+
+            AppDomain.Unload(testsContainerFinderDomain);
 
             return testContainers;
         }

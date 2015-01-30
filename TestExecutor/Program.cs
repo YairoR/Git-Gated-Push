@@ -13,9 +13,6 @@ namespace TestExecutor
 
         public static int Main(string[] args)
         {
-            var t = new TestsContainerFinder();
-            t.GetTestsContainers(@"C:\temp-deleteit");
-
             var mainExecutor = new MainExecutor();
             var result = mainExecutor.Execute();
 

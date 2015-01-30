@@ -13,24 +13,13 @@ namespace TestExecutor
         public const string BuildLogPath = GitPushExtentionLogs + @"SolutionBuilderLogs.txt";
 
         /// <summary>
-        /// Create all needed resources for running the tests.
+        /// Clear the given path from files and then delete the directory itself.
         /// </summary>
-        public static void CreateResource()
-        {
-            ClearResources();
-            Directory.CreateDirectory(LogPath);
-            Directory.CreateDirectory(BuildPath);
-            Directory.CreateDirectory(GitPushExtentionLogs);
-
-            using (var f = File.Create(BuildLogPath))
-            {
-                // Do nothing       
-            }
-        }
-
+        /// <param name="resourcePath">The path to delete.</param>
         public static void ClearResources(string resourcePath)
         {
             Trace.TraceInformation("Starting to clear resource {0}", resourcePath);
+            var allFilesDeleted = true;
 
             if (Directory.Exists(resourcePath))
             {
@@ -45,69 +34,19 @@ namespace TestExecutor
                         }
                         catch (UnauthorizedAccessException)
                         {
-                            // Do Nothing
+                            allFilesDeleted = false;
+                            Trace.TraceError("Unable to delete file {0}", f);
                         }
                     });
 
                 directory.EnumerateDirectories().ToList().ForEach(d => d.Delete(true));
 
-                // Delete directory
-                Directory.Delete(resourcePath);
-            }
-        }
-
-        /// <summary>
-        /// Clear all used resources for running the tests.
-        /// </summary>
-        public static void ClearResources()
-        {
-            // Check if logs folder is exists, if so - delete it
-            if (Directory.Exists(LogPath))
-            {
-                var directory = new DirectoryInfo(LogPath);
-
-                directory.EnumerateFiles()
-                    .ToList().ForEach(f =>
-                    {
-                        try
-                        {
-                            f.Delete();
-                        }
-                        catch (UnauthorizedAccessException)
-                        {
-                            // Do Nothing
-                        }
-                    });
-
-                directory.EnumerateDirectories()
-                    .ToList().ForEach(d => d.Delete(true));
-
-                // Delete the log's path
-                Directory.Delete(LogPath);
-            }
-
-            // Check if build folder is exists, if so - delete it
-            if (Directory.Exists(BuildPath))
-            {
-                var directory = new DirectoryInfo(BuildPath);
-
-                directory.EnumerateFiles()
-                    .ToList().ForEach(f =>
-                    {
-                        try
-                        {
-                            f.Delete();
-                        }
-                        catch (UnauthorizedAccessException)
-                        {
-                            // Do Nothing
-                        }
-                    });
-
-                directory.EnumerateDirectories().ToList().ForEach(d => d.Delete(true));
-
-                // Delete directory
-                Directory.Delete(BuildPath);
+                // If we succeeded to delete all files, delete the directory itself.
+                // If not, it's ok to leave it as is because it's already in 'temp' folder
+                if (allFilesDeleted)
+                {
+                    Directory.Delete(resourcePath);
+                }
             }
         }
     }

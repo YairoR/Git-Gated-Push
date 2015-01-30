@@ -174,7 +174,6 @@ namespace TestExecutor
 
             // Build solution
             var buildOutputPath = GetTempBuildFolderPath();
-            Message.WriteInformation("Starting to build at: {0}", buildOutputPath);
             var solutionBuilt = BuildSolution(solutionItem, buildOutputPath, resourcesPath);
 
             // If the build failed, move to the next solution (don't continue to the tests)
