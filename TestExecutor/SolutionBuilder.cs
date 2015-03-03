@@ -19,19 +19,19 @@ namespace TestExecutor
         /// </summary>
         /// <param name="solutionPath">The solution's path.</param>
         /// <param name="buildOutputPath">The build output path.</param>
-        /// <param name="logOutputPath">The logs output path.</param>
+        /// <param name="resourcesPath">The resources path for placing the log file.</param>
         /// <param name="logfile">Optional - the log path (for future use, we can write the build's logs).</param>
         /// <returns>True if the build succeeded, else False.</returns>
         public bool BuildSolution(string solutionPath,
                                   string buildOutputPath,
-                                  string logOutputPath,
+                                  string resourcesPath,
                                   string logfile = "somelogfile")
         {
             try
             {
                 // Instantiate a new FileLogger to generate build log
                 var logger = new FileLogger();
-                logger.Parameters = @"logfile=" + Path.Combine(logOutputPath, "SolutionBuilderLogs.txt");
+                logger.Parameters = @"logfile=" + Path.Combine(resourcesPath, "SolutionBuilderLogs.txt");
                 var projectCollection = new ProjectCollection();
                 var globalProperty = new Dictionary<string, string>
                 {

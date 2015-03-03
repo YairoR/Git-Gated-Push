@@ -5,13 +5,11 @@ using System.Linq;
 
 namespace TestExecutor
 {
+    /// <summary>
+    /// An helper class resources management.
+    /// </summary>
     public static class TestsResourcesHelper
     {
-        public const string LogPath = @"C:\LogResultsTempFolder\";
-        public const string BuildPath = @"C:\BuildOutputTempFolder\";
-        public const string GitPushExtentionLogs = @"C:\GitPushExtentionLogs\";
-        public const string BuildLogPath = GitPushExtentionLogs + @"SolutionBuilderLogs.txt";
-
         /// <summary>
         /// Clear the given path from files and then delete the directory itself.
         /// </summary>

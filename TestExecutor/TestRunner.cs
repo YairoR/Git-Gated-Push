@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -13,15 +12,15 @@ namespace TestExecutor
         /// <summary>
         /// The MSTest component path.
         /// </summary>
-        private string _mstestPath;
+        private readonly string _mstestPath;
 
         /// <summary>
         /// Initialize a new instance of <see cref="TestRunner"/> class.
         /// </summary>
-        /// <param name="MsTestPath">The MSTest component full path.</param>
-        public TestRunner(string MsTestPath)
+        /// <param name="msTestPath">The MSTest component full path.</param>
+        public TestRunner(string msTestPath)
         {
-            _mstestPath = MsTestPath;
+            _mstestPath = msTestPath;
         }
 
         /// <summary>

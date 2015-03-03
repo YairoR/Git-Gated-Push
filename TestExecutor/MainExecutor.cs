@@ -72,9 +72,8 @@ namespace TestExecutor
             _solutionBuilder = new SolutionBuilder();
 
             // Get all solutions items we should work on
-            var solutionItems = GetSolutionsItems(Environment.CurrentDirectory,
-                                                  _testsConfiguration.ProcessAllSolutions,
-                                                  _testsConfiguration.SolutionsItems).ToList();
+            var solutionItems = GetSolutionsItems(@"C:\ApplicationInsights\MASI-OneSI-Packages",
+                                                  _testsConfiguration).ToList();
 
             Trace.TraceInformation("Found {0} solution items: {1}",
                 solutionItems.Count(),
@@ -90,13 +89,7 @@ namespace TestExecutor
             }
 
             // Start working on all the required solutions by building them and execute their tests if necessary 
-            var result = true;
-            foreach (var solutionItem in solutionItems)
-            {
-                result = result && HandleSolutionItem(solutionItem, resourcesPath);
-            }
-
-            return result;
+            return solutionItems.Aggregate(true, (current, solutionItem) => current && HandleSolutionItem(solutionItem, resourcesPath));
         }
 
         private bool Initialize()
@@ -156,7 +149,7 @@ namespace TestExecutor
             // Create physical path
             Directory.CreateDirectory(fullPath);
 
-            return fullPath; 
+            return fullPath;
         }
 
         /// <summary>
@@ -201,16 +194,17 @@ namespace TestExecutor
         /// <summary>
         /// Find all solutions that need to be processed.
         /// If the user set in configuration to build all solutions, the return value will be all solutions in the repository path.
+        /// If the user set in configuration to build only the solution that have changes, the return value will be the solution from the last 
+        /// commit.
         /// Else, the return value will be all the solutions that the user specific, which exists.
         /// </summary>
         /// <param name="repositoryPath">The repository path.</param>
-        /// <param name="findAllSolutions">Indicates if we should find all solutions</param>
-        /// <param name="solutionItems">The solutions paths that the user indicates.</param>
+        /// <param name="configuration">Current user configurations.</param>
         /// <returns></returns>
-        public IEnumerable<SolutionItem> GetSolutionsItems(string repositoryPath, bool findAllSolutions, List<SolutionItem> solutionItems)
+        public IEnumerable<SolutionItem> GetSolutionsItems(string repositoryPath, GitGatedPushConfiguration configuration)
         {
             // Case we should find all solutions in repository path
-            if (findAllSolutions)
+            if (configuration.ProcessAllSolutions)
             {
                 Trace.TraceInformation("Configuration was set to find all solution in repository path {0}", repositoryPath);
 
@@ -228,15 +222,44 @@ namespace TestExecutor
                         RunTests = true
                     });
             }
+            else if (configuration.FindSolutionByChanges)
+            {
+                var lastChangePath = _gitOperations.GetLastChangePath(repositoryPath);
+
+                if (string.IsNullOrEmpty(lastChangePath))
+                {
+                    Message.WriteError("Failed to find changes by last commit. Please check if there are any commits to push.");
+                    return new List<SolutionItem>();
+                }
+
+                // Find solution path by path
+                var solutionPath = GetSolutionPathByCommitedFilePath(repositoryPath, lastChangePath);
+
+                if (string.IsNullOrEmpty(solutionPath))
+                {
+                    Message.WriteError("Failed to find solution to process. Please check your last commit file path");
+                    return new List<SolutionItem>();
+                }
+
+                return new List<SolutionItem>
+                {
+                    new SolutionItem()
+                    {
+                        SolutionPath = solutionPath,
+                        BuildSolution = true,
+                        RunTests = true
+                    }
+                };
+            }
             else
             {
                 Trace.TraceInformation("Configuration was set to search for specific solution items");
 
-                var solutionsPaths = solutionItems.Select(s => Path.Combine(repositoryPath, s.SolutionPath));
+                var solutionsPaths = configuration.SolutionsItems.Select(s => Path.Combine(repositoryPath, s.SolutionPath));
 
                 Message.WriteInformation("Looking for the following solutions: {0}", string.Join(", ", solutionsPaths));
 
-                return solutionItems.Where(item => File.Exists(Path.Combine(repositoryPath, item.SolutionPath)));
+                return configuration.SolutionsItems.Where(item => File.Exists(Path.Combine(repositoryPath, item.SolutionPath)));
             }
         }
 
@@ -255,6 +278,34 @@ namespace TestExecutor
             return GitGatedPushConfiguration.LoadFromXmlFile(configFiles.First());
         }
 
+        private string GetSolutionPathByCommitedFilePath(string repositoryPath, string commitFilePath)
+        {
+            Trace.TraceInformation("Starting to search solution file, starting from {0}", commitFilePath);
+
+            var fullPath = Path.Combine(repositoryPath, commitFilePath);
+            DirectoryInfo parent = new DirectoryInfo(Path.Combine(repositoryPath, commitFilePath)).Parent;
+
+            int maximumRetries = 10;
+
+            while (parent != null && (!repositoryPath.Equals(parent.FullName) || maximumRetries != 0))
+            {
+                // Search if this current folder has a solution file
+                var solutionFile = Directory.GetFiles(parent.FullName, "*.sln", SearchOption.TopDirectoryOnly).FirstOrDefault();
+
+                if (!string.IsNullOrEmpty(solutionFile))
+                {
+                    return solutionFile;
+                }
+
+                // Else, move to the parent of the current folder
+                parent = new DirectoryInfo(parent.FullName).Parent;
+
+                maximumRetries--;
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Build the given solution (only if the 'BuildSolution' property is true).
         /// </summary>
@@ -266,6 +317,7 @@ namespace TestExecutor
             // In case we don't need to build solution, skip this work item
             if (!solutionItem.BuildSolution)
             {
+                Message.WriteInformation("Solution {0} was set to buildSolution=False - skipping it.", solutionItem.SolutionPath);
                 return true;
             }
 
@@ -317,7 +369,7 @@ namespace TestExecutor
             if (_testsConfiguration.OnDevelopOnly && !branchName.Equals("develop", StringComparison.InvariantCultureIgnoreCase))
             {
                 return false;
-            } 
+            }
 
             Message.WriteInformation("Current branch is {0}. Start looking for solutions.", branchName);
 

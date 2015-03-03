@@ -51,6 +51,12 @@ namespace TestExecutor
         public bool ProcessAllSolutions { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicates whether we should find which solution we need to process by
+        /// checking the unsynced commits for current branch.
+        /// </summary>
+        public bool FindSolutionByChanges { get; set; }
+
+        /// <summary>
         /// Gets or sets the solution items that we should process in case the user doesn't 
         /// want to process all solutions.
         /// </summary>
