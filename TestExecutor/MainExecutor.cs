@@ -12,10 +12,8 @@ namespace TestExecutor
         private GitGatedPushConfiguration _testsConfiguration;
         private readonly GitOperations _gitOperations;
         private SolutionBuilder _solutionBuilder;
-        private ILogger _logger;
         private TestsHandler _testsHandler;
 
-        private const string UniqueLogFolderFormat = "dd.MM.yyyy HH.mm.ss";
 
         /// <summary>
         /// Creates a new instance of the <see cref="MainExecutor"/> class
@@ -72,8 +70,7 @@ namespace TestExecutor
             _solutionBuilder = new SolutionBuilder();
 
             // Get all solutions items we should work on
-            var solutionItems = GetSolutionsItems(@"C:\ApplicationInsights\MASI-OneSI-Packages",
-                                                  _testsConfiguration).ToList();
+            var solutionItems = GetSolutionsItems(Environment.CurrentDirectory, _testsConfiguration).ToList();
 
             Trace.TraceInformation("Found {0} solution items: {1}",
                 solutionItems.Count(),
@@ -130,7 +127,7 @@ namespace TestExecutor
         /// <returns></returns>
         private string InitializeTracer()
         {
-            var logsOutputPath = GetLogsFullPath();
+            var logsOutputPath = TestsResourcesHelper.GetLogsPath();
 
             // Create log path
             var logPath = Path.Combine(logsOutputPath, "GitGatedPushLogs.log");
@@ -140,18 +137,6 @@ namespace TestExecutor
             return logsOutputPath;
         }
 
-        private string GetLogsFullPath()
-        {
-            var logsOutputPath = Path.GetTempPath();
-            var folderName = DateTime.UtcNow.ToString(UniqueLogFolderFormat) + "-Logs-Output";
-            var fullPath = Path.Combine(logsOutputPath, folderName);
-
-            // Create physical path
-            Directory.CreateDirectory(fullPath);
-
-            return fullPath;
-        }
-
         /// <summary>
         /// Start handle solution item by building the solution and execute the unit tests.
         /// </summary>
@@ -159,14 +144,14 @@ namespace TestExecutor
         /// <returns>True if all steps passed, else False.</returns>
         private bool HandleSolutionItem(SolutionItem solutionItem, string resourcesPath)
         {
-            Message.WriteInformation("Starting work on solution {0}", Path.GetFileNameWithoutExtension(solutionItem.SolutionPath));
+            Message.WriteInformation("Starting to work on solution '{0}'", Path.GetFileNameWithoutExtension(solutionItem.SolutionPath));
 
-            Trace.TraceInformation("Starting to process solution {0}", solutionItem.SolutionPath);
+            Trace.TraceInformation("Starting to process solution '{0}'", solutionItem.SolutionPath);
 
             var stopWatch = Stopwatch.StartNew();
 
             // Build solution
-            var buildOutputPath = GetTempBuildFolderPath();
+            var buildOutputPath = TestsResourcesHelper.GetBuildPath();
             var solutionBuilt = BuildSolution(solutionItem, buildOutputPath, resourcesPath);
 
             // If the build failed, move to the next solution (don't continue to the tests)
@@ -226,6 +211,8 @@ namespace TestExecutor
             {
                 var lastChangePath = _gitOperations.GetLastChangePath(repositoryPath);
 
+                Trace.TraceInformation("Found local change: {0}", lastChangePath);
+
                 if (string.IsNullOrEmpty(lastChangePath))
                 {
                     Message.WriteError("Failed to find changes by last commit. Please check if there are any commits to push.");
@@ -235,9 +222,10 @@ namespace TestExecutor
                 // Find solution path by path
                 var solutionPath = GetSolutionPathByCommitedFilePath(repositoryPath, lastChangePath);
 
-                if (string.IsNullOrEmpty(solutionPath))
+                // In case the file path is the same as the environment directory, take default
+                if (string.IsNullOrEmpty(solutionPath) || solutionPath.Equals(Environment.CurrentDirectory, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    Message.WriteError("Failed to find solution to process. Please check your last commit file path");
+                    Trace.TraceInformation("Failed to find solution to process, proceeding with 'git push'");
                     return new List<SolutionItem>();
                 }
 
@@ -263,7 +251,7 @@ namespace TestExecutor
             }
         }
 
-        public GitGatedPushConfiguration GetTestsConfiguration(string rootPath)
+        private GitGatedPushConfiguration GetTestsConfiguration(string rootPath)
         {
             // Search for 'TestsConfiguration.config' file
             var configFiles = Directory.GetFiles(rootPath, "GitGatedPushConfiguration.config", SearchOption.TopDirectoryOnly);
@@ -282,7 +270,6 @@ namespace TestExecutor
         {
             Trace.TraceInformation("Starting to search solution file, starting from {0}", commitFilePath);
 
-            var fullPath = Path.Combine(repositoryPath, commitFilePath);
             DirectoryInfo parent = new DirectoryInfo(Path.Combine(repositoryPath, commitFilePath)).Parent;
 
             int maximumRetries = 10;
@@ -371,25 +358,9 @@ namespace TestExecutor
                 return false;
             }
 
-            Message.WriteInformation("Current branch is {0}. Start looking for solutions.", branchName);
+            Message.WriteInformation("Current branch is '{0}'. Starting to look for solutions.", branchName);
 
             return true;
-        }
-
-        /// <summary>
-        /// Get a temp output folder path for build solutions.
-        /// </summary>
-        /// <returns>The path for building solution.</returns>
-        private string GetTempBuildFolderPath()
-        {
-            var tempFolder = Path.GetTempPath();
-            var folderName = DateTime.UtcNow.ToString(UniqueLogFolderFormat) + "-Build-Output";
-            var fullPath = Path.Combine(tempFolder, folderName);
-
-            // Create physical path
-            Directory.CreateDirectory(fullPath);
-
-            return fullPath;
         }
 
         #endregion

@@ -17,7 +17,7 @@ namespace TestExecutor
             var result = mainExecutor.Execute();
 
             // Return screen font color to gray (default)
-            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.ResetColor();
 
             return result ? OperationSucceeded : OperationFailed;
         }

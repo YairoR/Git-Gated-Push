@@ -39,7 +39,7 @@ namespace TestExecutor
                 }
             })
             {
-                process.StartInfo.Arguments = "/testcontainer:" + testContainer + " /resultsfile:" + Path.GetTempFileName() + ".trx";
+                process.StartInfo.Arguments = "/testcontainer:" + testContainer + " /resultsfile:" + TestsResourcesHelper.GetTempPathForTestRun();
                 process.Start();
 
                 return process.StandardOutput.ReadToEndAsync();

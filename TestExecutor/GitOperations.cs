@@ -89,6 +89,7 @@ namespace TestExecutor
             var changeForBranch = GetChangeForBranch(repositoryPath);
 
             Trace.TraceInformation("Found a change: {0}", changeForBranch);
+
             // If there is no change, don't procced
             if (string.IsNullOrEmpty(changeForBranch))
             {
@@ -115,6 +116,8 @@ namespace TestExecutor
 
         public string GetChangeForBranch(string repositoryPath)
         {
+            Trace.TraceInformation("Get all changes for current branch. path: {0}", repositoryPath);
+
             // Get the specific branch that the user is in
             _gitProcessInfo.Arguments = "cherry -v";
             _gitProcessInfo.WorkingDirectory = repositoryPath;

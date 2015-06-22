@@ -84,14 +84,14 @@ namespace TestExecutor
                         return new List<Type>();
                     }
                 }
+
+                return GetAssemblyClasses(assembly).Where(IsContainsTestsClasses).ToList();
             }
             catch (Exception e)
             {
                 _tracerWrapper.TraceError("Failed to analyze assembly {0}, exception: {1}", assemblyPath, e.Message);
                 return new List<Type>();
             }
-
-            return GetAssemblyClasses(assembly).Where(IsContainsTestsClasses).ToList();
         }
 
         /// <summary>

@@ -31,15 +31,18 @@ namespace TestExecutor
         {
             Message.WriteInformation("Searching for tests containers");
 
-            var testsContainers = LookForTestsContainer(buildPath);
+            var testsContainers = LookForTestsContainer(buildPath).ToList();
 
             // Run all tests async
             var testResultsInfo = await Task.WhenAll(testsContainers.Select(_testRunner.RunTestContainerAsync));
 
             Trace.TraceInformation("Starting to run all tests containers: {0}", string.Join(", ", testsContainers));
 
-            // In each test result, find the trx file and convert it to TestRunType object
-            var testsResults = testResultsInfo.Select(GetTestResult).Where(t => t != null).ToList();
+            // Get all TRX files from folder
+            var trxFiles = Directory.GetFiles(TestsResourcesHelper.GetTestsLogsPath());
+
+            // For each test result, convert the trx file to TestRunType object
+            var testsResults = trxFiles.Select(GetTestResult).Where(t => t != null).ToList();
 
             // Calculate the number of passed and failed tests
             var passedTests = CountTestsResults(testsResults, TestOutcome.Passed).ToList();
@@ -71,16 +74,7 @@ namespace TestExecutor
         {
             try
             {
-                var resultFileStartLocation = testResult.IndexOf("Results file:", StringComparison.Ordinal);
-                var trxPathEndLocation = testResult.IndexOf("\r\n", resultFileStartLocation, StringComparison.Ordinal);
-
-                var trxPathStartLocation = resultFileStartLocation + "Results file:".Length;
-                var trxPathLength = trxPathEndLocation - trxPathStartLocation;
-
-                // Get the trx file path
-                var trxPath = testResult.Substring(trxPathStartLocation, trxPathLength);
-
-                var trxFile = new FileInfo(trxPath);
+                var trxFile = new FileInfo(testResult);
 
                 using (var trxFileReader = new StreamReader(trxFile.FullName))
                 {
