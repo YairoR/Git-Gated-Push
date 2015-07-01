@@ -5,19 +5,20 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using TestExecutor.TestRunners;
 
 namespace TestExecutor
 {
     internal class TestsHandler
     {
-        private TestRunner _testRunner;
+        private MsTestRunner _testRunner;
         private readonly XmlSerializer _xmlSer = new XmlSerializer(typeof(TestRunType));
         private readonly List<string> _failingTests = new List<string>();
         private readonly TestsContainerFinder _testContainerFinder;
 
         public TestsHandler(string MsTestPath)
         {
-            _testRunner = new TestRunner(MsTestPath);
+            _testRunner = new MsTestRunner(MsTestPath);
             _testContainerFinder = new TestsContainerFinder();
         }
 

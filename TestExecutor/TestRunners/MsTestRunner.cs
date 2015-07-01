@@ -1,13 +1,12 @@
 ﻿using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 
-namespace TestExecutor
+namespace TestExecutor.TestRunners
 {
     /// <summary>
     /// The MSTest component executer - execute a test container using the MSTest component.
     /// </summary>
-    public class TestRunner
+    internal class MsTestRunner
     {
         /// <summary>
         /// The MSTest component path.
@@ -15,10 +14,10 @@ namespace TestExecutor
         private readonly string _mstestPath;
 
         /// <summary>
-        /// Initialize a new instance of <see cref="TestRunner"/> class.
+        /// Initialize a new instance of <see cref="MsTestRunner"/> class.
         /// </summary>
         /// <param name="msTestPath">The MSTest component full path.</param>
-        public TestRunner(string msTestPath)
+        public MsTestRunner(string msTestPath)
         {
             _mstestPath = msTestPath;
         }
