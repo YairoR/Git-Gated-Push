@@ -45,7 +45,7 @@ namespace TestExecutor
 
             var fullPath = GetTestsLogsPath();
 
-            return Path.Combine(fullPath, Path.GetTempFileName() + ".trx");
+            return Path.Combine(fullPath, Path.GetRandomFileName() + ".trx");
         }
 
         public static string GetTestsLogsPath()

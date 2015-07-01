@@ -35,11 +35,12 @@ namespace TestExecutor
                 StartInfo = new ProcessStartInfo(_mstestPath)
                 {
                     UseShellExecute = false,
-                    RedirectStandardOutput = true
+                    RedirectStandardOutput = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
                 }
             })
             {
-                process.StartInfo.Arguments = "/testcontainer:" + testContainer + " /resultsfile:" + TestsResourcesHelper.GetTempPathForTestRun();
+                process.StartInfo.Arguments = string.Format("/testcontainer:\"{0}\" /resultsfile:\"{1}\"", testContainer, TestsResourcesHelper.GetTempPathForTestRun());
                 process.Start();
 
                 return process.StandardOutput.ReadToEndAsync();

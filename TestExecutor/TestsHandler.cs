@@ -34,7 +34,7 @@ namespace TestExecutor
             var testsContainers = LookForTestsContainer(buildPath).ToList();
 
             // Run all tests async
-            var testResultsInfo = await Task.WhenAll(testsContainers.Select(_testRunner.RunTestContainerAsync));
+            await Task.WhenAll(testsContainers.Select(_testRunner.RunTestContainerAsync));
 
             Trace.TraceInformation("Starting to run all tests containers: {0}", string.Join(", ", testsContainers));
 
