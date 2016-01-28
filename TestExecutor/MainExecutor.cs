@@ -355,6 +355,10 @@ namespace TestExecutor
             // Check if we should continue only in 'develop' branch
             if (_testsConfiguration.OnDevelopOnly && !branchName.Equals("develop", StringComparison.InvariantCultureIgnoreCase))
             {
+                var errorMessage = string.Format("Cancelling Git Gate Push - should be run only under 'develop' branch (Current branch is not '{0}'", branchName);
+                Message.WriteWarning(errorMessage);
+                Trace.TraceWarning(errorMessage);
+
                 return false;
             }
 

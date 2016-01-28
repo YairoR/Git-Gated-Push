@@ -30,23 +30,35 @@ namespace TestExecutor
             try
             {
                 // Instantiate a new FileLogger to generate build log
-                var logger = new FileLogger();
-                logger.Parameters = @"logfile=" + Path.Combine(resourcesPath, "SolutionBuilderLogs.txt");
-                var projectCollection = new ProjectCollection();
+                var logger = new FileLogger
+                {
+                    Parameters = @"logfile=" + Path.Combine(resourcesPath, "SolutionBuilderLogs.txt")
+                };
+
+                var projectCollection = new ProjectCollection()
+                {
+                    DefaultToolsVersion = "14.0",
+                };
+
                 var globalProperty = new Dictionary<string, string>
                 {
                     {"Configuration", "Debug"},
                     {"Platform", "Any CPU"},
                     {"OutputPath", buildOutputPath},
                     {"nodereuse", "false"},
-                    {"VisualStudioVersion", "12.0"}
+                    {"VisualStudioVersion", "14.0"},
+                    {"RunCodeAnalysis", "false"},
+                    {"CleanBuild", "true"},
+                    {"SkipInvalidConfigurations", "true"}
                 };
 
                 var buildRequest = new BuildRequestData(solutionPath, globalProperty, null, new [] { "Build" }, null);
 
                 //register file logger using BuildParameters
-                var bp = new BuildParameters(projectCollection);
-                bp.Loggers = new List<Microsoft.Build.Framework.ILogger> { logger }.AsEnumerable();
+                var bp = new BuildParameters(projectCollection)
+                {
+                    Loggers = new List<Microsoft.Build.Framework.ILogger> {logger}.AsEnumerable()
+                };
 
                 //build solution
                 var buildResult = BuildManager.DefaultBuildManager.Build(bp, buildRequest);
