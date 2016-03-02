@@ -1,4 +1,7 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 
 namespace TestExecutor
 {
@@ -10,24 +13,28 @@ namespace TestExecutor
         /// <summary>
         /// In case the user didn't gave the git exe path, this is the default one.
         /// </summary>
-        private const string GitDefaultPath = @"C:\Program Files (x86)\Git\cmd\git.exe";
+        private readonly string[] _gitDefaultPaths =
+        {
+            @"C:\Program Files (x86)\Git\cmd\git.exe",
+            @"C:\Program Files\Git\cmd\git.exe"
+        };
+
 
         private readonly ProcessStartInfo _gitProcessInfo;
         private readonly Process _process;
 
         /// <summary>
-        /// Createa a new instance of <see cref="GitOperations"/> class.
-        /// </summary>
-        public GitOperations() : this(GitDefaultPath)
-        {
-        }
-
-        /// <summary>
         /// Creates a new instance of <see cref="GitOperations"/> class.
         /// </summary>
-        /// <param name="gitPath">The git.exe path.</param>
-        public GitOperations(string gitPath)
+        public GitOperations()
         {
+            // Find the correct git path
+            string gitPath = _gitDefaultPaths.FirstOrDefault(File.Exists);
+            if (gitPath == null)
+            {
+                throw new InvalidOperationException("Cannot find git.exe file in any of the known paths");
+            }
+
             // Set git process
             _gitProcessInfo = new ProcessStartInfo(gitPath);
             _gitProcessInfo.UseShellExecute = false;
